@@ -56,3 +56,25 @@ Il est repris dans le README final (étape 7).
 - `ACME_CA` optionnel dans `.env` pour tester avec le CA de test Let's Encrypt avant la production.
 - `compose.networks.yml` (réseaux de projets) et `caddy/sites/*.caddy`, `postgres/hba.d/*.conf` sont des
   fichiers générés, non versionnés : l'état des projets vit sur le serveur, pas dans git.
+
+## Étape 4 — create-project.sh
+
+- Un projet = une base `<nom>`, un rôle `<nom>_app` (LOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE,
+  NOREPLICATION, 15 connexions max), un réseau Docker `net_<nom>` à **sous-réseau fixe** `10.77.N.0/24`.
+- `hba.d/<nom>.conf` autorise ce rôle, sur cette base, **depuis ce sous-réseau uniquement**. Même avec le bon
+  mot de passe, un autre projet ne peut pas se connecter. `CONNECT` est aussi révoqué pour PUBLIC sur
+  `postgres`, `template1` et la base du projet ; `public` n'est plus utilisable par PUBLIC.
+- Postgres et Caddy sont rattachés au réseau du projet **à chaud** (`docker network connect`, sans redémarrage).
+  `compose.networks.yml` est régénéré à partir de `hba.d/*.conf` pour que cela survive à un redémarrage.
+  Conséquence : le prochain `docker compose up -d` dans `infra/` recréera caddy/postgres (quelques secondes
+  de coupure) : à faire en maintenance planifiée.
+- Le mot de passe est généré (192 bits), passé à psql par stdin (jamais en argument), écrit dans le `.env` du
+  projet (600). Il n'est **affiché que si `--show-password`** est passé, car les sorties de terminal peuvent
+  être collées dans un chat ou enregistrées. Écart volontaire par rapport à « affiché une seule fois ».
+- Si une étape échoue (ou Ctrl+C), le script annule ce qu'il a créé (base, rôle, réseau, fichiers).
+- Dossier projet : `/srv/projects/<nom>/{docker-compose.yml,.env,secrets/,app/}`. `app/` = clone du dépôt de l'API.
+  Le compose et le `.env` ne sont pas dans le dépôt de l'API : ils suffisent, avec un `pg_dump` et le DNS, à migrer.
+- Le conteneur API tourne avec l'uid/gid de `deploy` (pour lire `secrets/` en 600), en lecture seule,
+  `cap_drop: ALL`. Sur un autre VPS, `create-project.sh` (ou un `sed`) réadapte l'uid.
+- `check-project.sh <nom>` : teste l'isolation depuis un conteneur jetable sur le réseau du projet
+  (accès légitime OK, autres bases refusées, superuser refusé par le réseau, mauvais mot de passe refusé).

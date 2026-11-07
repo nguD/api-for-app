@@ -1,0 +1,16 @@
+# Projet @@PROJECT@@ — généré par scripts/create-project.sh
+@@DOMAIN@@ {
+	import secure_headers
+	encode zstd gzip
+
+	request_body {
+		max_size 2MB
+	}
+
+	reverse_proxy @@PROJECT@@-api:@@PORT@@ {
+		transport http {
+			dial_timeout 5s
+			response_header_timeout 30s
+		}
+	}
+}

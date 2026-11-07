@@ -1,0 +1,59 @@
+# docker-compose du projet @@PROJECT@@ — généré par scripts/create-project.sh.
+# Ce fichier + .env (+ pg_dump + DNS) suffisent à migrer le projet vers un autre VPS.
+#
+# Le code de l'API est cloné dans ./app (dépôt du projet), qui contient le Dockerfile.
+# Le réseau net_@@PROJECT@@ est créé par create-project.sh : seuls Caddy et Postgres y sont
+# rattachés, l'API n'est donc joignable que par eux.
+
+name: @@PROJECT@@
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  api:
+    build:
+      context: ./app
+    image: @@PROJECT@@-api:${IMAGE_TAG:-local}
+    container_name: @@PROJECT@@-api
+    restart: unless-stopped
+    # Même uid/gid que l'utilisateur d'administration : permet de lire ./secrets (600)
+    user: "@@UID@@:@@GID@@"
+    env_file: .env
+    expose:
+      - "@@PORT@@"
+    volumes:
+      # Fichiers secrets (ex : compte de service Firebase), en lecture seule dans /run/secrets
+      - ./secrets:/run/secrets:ro
+    networks:
+      net:
+        aliases:
+          - @@PROJECT@@-api
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    pids_limit: 200
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging: *default-logging
+
+networks:
+  net:
+    external: true
+    name: net_@@PROJECT@@
