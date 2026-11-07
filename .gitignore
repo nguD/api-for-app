@@ -15,6 +15,7 @@ id_*
 # --- Fichiers générés / locaux ---
 infra/compose.networks.yml
 infra/caddy/sites/*.caddy
+infra/postgres/hba.d/*.conf
 backups/
 *.sql
 *.sql.gz

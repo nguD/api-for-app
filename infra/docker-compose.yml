@@ -1,0 +1,140 @@
+# Infra partagée : Caddy (reverse proxy HTTPS) + PostgreSQL.
+#
+# Les réseaux de chaque projet (net_<projet>) sont ajoutés à caddy et postgres par
+# compose.networks.yml, fichier GÉNÉRÉ par scripts/create-project.sh (non versionné).
+# COMPOSE_FILE (dans .env) fusionne les deux fichiers automatiquement.
+#
+# Images : version majeure épinglée. Les mises à jour mineures se font volontairement
+# avec `docker compose pull && docker compose up -d` (jamais automatiquement).
+
+name: infra
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL manquant dans .env}
+      ACME_CA: ${ACME_CA:-https://acme-v02.api.letsencrypt.org/directory}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/sites:/etc/caddy/sites:ro
+      - caddy_data:/data        # certificats TLS : à ne pas perdre
+      - caddy_config:/config
+    networks:
+      edge: {}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    pids_limit: 200
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging: *default-logging
+
+  postgres:
+    image: postgres:17-bookworm
+    container_name: postgres
+    restart: unless-stopped
+    # AUCUN port publié : Postgres n'est joignable que depuis les réseaux Docker.
+    environment:
+      POSTGRES_USER: dbadmin
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --data-checksums"
+    secrets:
+      - postgres_password
+    command:
+      - postgres
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
+      - -c
+      - listen_addresses=*              # interfaces des réseaux Docker uniquement (rien n'est publié)
+      - -c
+      - password_encryption=scram-sha-256
+      # Dimensionné pour 1 vCPU / 2 Go de RAM partagés avec les APIs
+      - -c
+      - max_connections=40
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - max_parallel_workers_per_gather=0
+      - -c
+      - idle_in_transaction_session_timeout=60000
+      - -c
+      - timezone=UTC
+      - -c
+      - log_timezone=UTC
+      - -c
+      - log_connections=on
+      - -c
+      - log_min_duration_statement=500
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./postgres/hba.d:/etc/postgresql/hba.d:ro
+    networks:
+      db_internal: {}
+    shm_size: 128mb
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    pids_limit: 200
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbadmin -d postgres"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+
+networks:
+  edge: {}
+  db_internal:
+    internal: true   # pas d'accès Internet depuis ce réseau
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password   # créé par scripts/init-infra.sh, jamais dans git

@@ -1,0 +1,22 @@
+{
+	email {$ACME_EMAIL}
+	acme_ca {$ACME_CA}
+
+	servers {
+		# Le port 443/UDP (HTTP/3) est fermé dans ufw : on désactive h3
+		protocols h1 h2
+	}
+}
+
+# Snippet réutilisé par chaque site
+(secure_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+}
+
+# Un fichier par projet, généré par scripts/create-project.sh
+import sites/*.caddy

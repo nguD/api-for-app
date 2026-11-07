@@ -35,3 +35,24 @@ Il est repris dans le README final (étape 7).
   en fait partie.
 - Les mises à jour automatiques ne couvrent que les dépôts de sécurité Ubuntu. Si Docker vient
   d'un dépôt tiers, ses mises à jour sont manuelles (à vérifier : `apt-cache policy docker-ce docker.io`).
+
+## Étape 3 — Docker, Caddy, Postgres
+
+- Dépôt cloné sur le VPS dans **`/srv/platform`** (la stack tourne depuis `/srv/platform/infra`).
+  Projets dans `/srv/projects/<nom>`, dumps locaux dans `/srv/backups` (700).
+- **PostgreSQL 17** (et non 16) : plus récent, supporté jusqu'en 2029. Évite aussi le changement
+  de répertoire de données de la 18. `--data-checksums` activé.
+- Images épinglées sur la **version majeure** (`postgres:17-bookworm`, `caddy:2-alpine`) :
+  les mises à jour mineures sont volontaires (`docker compose pull`). À durcir avec des digests si besoin.
+- Superutilisateur Postgres `dbadmin`. Son mot de passe est un **fichier secret** (400, propriétaire uid 999),
+  généré sur le serveur, jamais affiché. Il n'est pas utilisé au quotidien : l'administration passe par
+  `docker exec postgres psql` (socket Unix interne, `local trust`). Aucune connexion superutilisateur par le réseau.
+- `pg_hba.conf` : `reject` par défaut + `include_dir hba.d/` : un fichier par projet, limité à son
+  utilisateur, sa base **et au sous-réseau Docker fixe de son projet** (défini à l'étape 4).
+- Postgres est sur `db_internal` (réseau `internal: true`, sans accès Internet) et n'a aucun port publié.
+  `listen_addresses=*` s'applique donc seulement aux interfaces Docker internes.
+- Pas de TLS entre l'API et Postgres : le trafic reste sur un réseau Docker local à l'hôte.
+- Caddy : HTTP/3 désactivé (443/UDP fermé), conteneur en lecture seule, `cap_drop: ALL` + `NET_BIND_SERVICE`.
+- `ACME_CA` optionnel dans `.env` pour tester avec le CA de test Let's Encrypt avant la production.
+- `compose.networks.yml` (réseaux de projets) et `caddy/sites/*.caddy`, `postgres/hba.d/*.conf` sont des
+  fichiers générés, non versionnés : l'état des projets vit sur le serveur, pas dans git.
