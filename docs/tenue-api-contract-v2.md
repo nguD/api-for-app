@@ -1,8 +1,8 @@
 # CONTRAT API v2 : API Tenue pour l'application Flutter
 
 À donner tel quel à la conversation qui construit l'app. Ce document **remplace** `tenue-api-contract.md` (v1) et décrit
-les routes de la v2. **Statut : développée et testée, PAS ENCORE déployée en production** : tant que ce statut n'est pas
-passé à « en production » (voir l'historique en bas), l'URL ci-dessous répond encore avec la v1.
+les routes de la v2. **Statut : EN PRODUCTION depuis le 7 novembre 2026** (validée par 80 vérifications de bout en bout,
+dont les photos Bunny et la suppression de compte).
 
 La v2 est **rétrocompatible** : les routes de la v1 (`GET /v1/me`, `GET|POST /v1/items`, `GET|DELETE /v1/items/{id}`)
 se comportent comme avant, les objets « vêtement » reçoivent seulement des champs supplémentaires (une app v1 qui
@@ -335,4 +335,4 @@ d'une tenue, suppression d'une entrée de port (annuler un « porté aujourd'hui
 | Version | Statut |
 |---|---|
 | v1 | en production |
-| v2 | **développée et testée, en attente de feu vert pour le déploiement** |
+| v2 | **en production (7 novembre 2026)** |
