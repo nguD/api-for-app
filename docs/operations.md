@@ -122,6 +122,34 @@ disque sous 85 %, sauvegarde de moins de 26 h.
 - L'envoi d'e-mails passe par `msmtp` et un relais SMTP que tu choisis (`scripts/setup-alerts.sh`). Le mot de
   passe SMTP n'est que dans `~/.msmtprc` (600) sur le VPS.
 
+## Photos privées (Bunny.net) et déploiement de l'API v2
+
+**Dans Bunny (une fois)** : créer une *Storage Zone* (région proche), une *Pull Zone* dont l'origine est cette zone,
+puis activer **Token Authentication** sur la Pull Zone (sinon les images seraient publiques ; le script de
+vérification le détecte). Aucun secret n'est à donner à qui que ce soit : les clés se saisissent sur le VPS.
+
+```bash
+cd /srv/platform && git pull
+scripts/bunny-setup.sh tenue            # saisie (clés masquées) -> .env en 600, puis vérification de bout en bout
+scripts/bunny-setup.sh tenue --check    # revérifier plus tard (écriture, lecture avec/sans jeton, nettoyage)
+```
+
+Le `.env` précédent est conservé en `.env.bak-<date>` (600). Les 5 variables `BUNNY_*` fonctionnent en **tout ou rien** :
+si certaines manquent, l'API refuse de démarrer (le message ne nomme que les variables manquantes).
+
+**Déploiement de la v2** (seulement sur feu vert explicite) :
+
+```bash
+scripts/deploy.sh tenue --migrate       # sauvegarde predeploy, migrations 0001-0005, bascule, healthcheck, rollback auto
+```
+
+Après déploiement, `projects/tenue-api/tools/smoke-test.sh` (sur ton Mac) vérifie la v2 de bout en bout.
+
+**Retour arrière** : `scripts/rollback.sh tenue` remet l'image précédente (compatible : les migrations sont additives,
+l'ancienne API ignore les nouvelles colonnes). Revenir au schéma v1 est un acte séparé et destructif pour les nouvelles
+données : restaurer la sauvegarde `predeploy` (`scripts/restore.sh`) ou jouer à la main les scripts
+`projects/tenue-api/drizzle/down/000N_*.down.sql` en ordre inverse (5 → 1), après avoir fait `rollback.sh`.
+
 ## Dépannage rapide
 
 ```bash
