@@ -1,0 +1,35 @@
+# --- Secrets : ne jamais commiter ---
+.env
+.env.*
+!.env.example
+**/secrets/
+*.pem
+*.key
+*.p12
+*service-account*.json
+*firebase-adminsdk*.json
+rclone.conf
+id_*
+!id_*.pub
+
+# --- Fichiers générés / locaux ---
+infra/compose.networks.yml
+infra/caddy/sites/*.caddy
+backups/
+*.sql
+*.sql.gz
+*.dump
+
+# --- Node ---
+node_modules/
+dist/
+coverage/
+
+# --- Projets d'API hébergés dans leur propre dépôt ---
+projects/*/
+
+# --- OS / éditeurs ---
+.DS_Store
+.idea/
+.vscode/
+*.log
