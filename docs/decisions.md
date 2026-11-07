@@ -78,3 +78,40 @@ Il est repris dans le README final (étape 7).
   `cap_drop: ALL`. Sur un autre VPS, `create-project.sh` (ou un `sed`) réadapte l'uid.
 - `check-project.sh <nom>` : teste l'isolation depuis un conteneur jetable sur le réseau du projet
   (accès légitime OK, autres bases refusées, superuser refusé par le réseau, mauvais mot de passe refusé).
+
+## Étape 5 — API Tenue (projects/tenue-api, dépôt git séparé)
+
+- Code dans `projects/tenue-api/`, **ignoré par ce dépôt** (`projects/*/`) et doté de son propre dépôt git.
+  Première mise en ligne par `rsync` (aucune clé de déploiement nécessaire) ; la clé de déploiement GitHub
+  en lecture seule sera mise en place avec `deploy.sh` (git pull).
+- Node.js **24 LTS** dans l'image Docker (testé en local avec Node 22). Fastify 5, Zod 4, Drizzle ORM (migrations SQL
+  versionnées dans `drizzle/`, générées par `drizzle-kit generate`), firebase-admin (imports modulaires).
+- Authentification : `Authorization: Bearer <ID token Firebase>` vérifié par le SDK Admin. `request.user.uid` est
+  la SEULE identité utilisée ; `user_id` n'est jamais lu depuis le client (`z.strictObject` refuse tout champ inconnu).
+  Chaque requête SQL filtre sur `user_id` (vérifié par des tests sur le SQL réellement envoyé).
+  Élément d'un autre utilisateur : **404** (et non 403) pour ne pas révéler son existence.
+- Révocation des tokens non vérifiée par défaut (`FIREBASE_CHECK_REVOKED=false`) : évite un appel réseau à Google par
+  requête. Un token volé reste donc valable jusqu'à son expiration (1 h). À activer si le besoin le justifie.
+- Au démarrage, l'API compare `project_id` du compte de service à `FIREBASE_PROJECT_ID` et refuse de démarrer en cas
+  d'écart. Les messages d'erreur de configuration ne contiennent jamais de valeur de variable.
+- Limites de débit : par IP (100 requêtes / 60 s, avant authentification, y compris sur les 404) via `@fastify/rate-limit`,
+  puis par uid (300 / 60 s) via `rate-limiter-flexible`. Compteurs **en mémoire** : suffisant pour un conteneur unique,
+  réinitialisés à chaque redémarrage.
+- `trustProxy` limité aux adresses privées (`loopback,uniquelocal`) : seul Caddy atteint l'API. Caddy remplace
+  `X-Forwarded-For` par défaut, le client ne peut donc pas falsifier son IP.
+- CORS fermé par défaut (application mobile). Origines autorisées via `CORS_ORIGINS`.
+- `/health` interroge la base (`select 1`, timeout 2 s) : 200 si tout va bien, 503 sinon. La supervision détecte donc aussi
+  une base indisponible. Public mais soumis à la limite par IP.
+- Logs JSON (pino) avec `redact` (Authorization, cookies, mots de passe, tokens, clés). L'uid est journalisé (identifiant
+  pseudonyme, utile au diagnostic). Le token n'est jamais écrit : un test le vérifie.
+- Les migrations ne s'exécutent JAMAIS au démarrage : `docker compose run --rm api node dist/db/migrate.js`, à lancer
+  volontairement après un dump (voir étape 6).
+- Dépendances : 6 alertes `npm audit` « moderate » en production, toutes **indirectes via firebase-admin**
+  (`glob`/`minimatch`/`rimraf` dans le chemin Firestore, non utilisé ici, sans entrée utilisateur) ; non corrigeables sans
+  changement majeur. À revérifier régulièrement (`npm audit --omit=dev`). `drizzle-kit` (esbuild) est un outil de
+  développement absent de l'image.
+- Outils de test : `tools/mint-test-id-token.mjs` (crée un vrai ID token pour un uid de test à partir du compte de service)
+  et `tools/smoke-test.sh` (scénario de bout en bout avec deux utilisateurs). Ils créent les utilisateurs de test
+  `smoke-alice` et `smoke-bob` dans Firebase Auth (supprimables ensuite dans la console).
+- Le compte de service est monté depuis `/srv/projects/tenue/secrets/` (600) en lecture seule dans `/run/secrets/`.
+  Il n'est ni dans git, ni dans l'image (`.dockerignore`), ni lu par le code autrement que par `cert(chemin)`.
