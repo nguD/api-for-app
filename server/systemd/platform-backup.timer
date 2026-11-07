@@ -1,0 +1,9 @@
+[Unit]
+Description=Sauvegarde quotidienne à 03h30 (heure de Paris)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Europe/Paris
+Persistent=true
+
+[Install]
+WantedBy=timers.target

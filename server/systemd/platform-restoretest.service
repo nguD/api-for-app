@@ -1,0 +1,14 @@
+[Unit]
+Description=Test de restauration automatique (base jetable)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=@@USER@@
+ExecStart=@@REPO@@/scripts/restore.sh --test --alert
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=1h
+NoNewPrivileges=true
+PrivateTmp=true

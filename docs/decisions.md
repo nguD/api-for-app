@@ -115,3 +115,30 @@ Il est repris dans le README final (étape 7).
   `smoke-alice` et `smoke-bob` dans Firebase Auth (supprimables ensuite dans la console).
 - Le compte de service est monté depuis `/srv/projects/tenue/secrets/` (600) en lecture seule dans `/run/secrets/`.
   Il n'est ni dans git, ni dans l'image (`.dockerignore`), ni lu par le code autrement que par `cert(chemin)`.
+
+## Étape 6 — Sauvegardes, déploiement, supervision
+
+Détail d'usage dans `docs/operations.md`. Décisions :
+
+- **Copie hors VPS reportée** (choix de l'utilisateur). Le script la gère déjà (`RCLONE_REMOTE`) et refuse tout
+  remote non chiffré (`crypt`), car les archives contiennent des secrets. En attendant, les sauvegardes sont sur le
+  même disque que les données : protection contre l'erreur humaine, pas contre la perte du VPS. À corriger vite.
+- Format des dumps : `pg_dump -Fc` (compressé, restauration sélective possible), un fichier par base, relu par
+  `pg_restore --list` avant d'être gardé. Somme `.sha256` à côté. Écriture dans `*.part` puis `mv` (jamais de
+  fichier à moitié écrit pris pour une sauvegarde).
+- Rotation : 7 quotidiennes + 4 hebdomadaires (liens durs, aucune place supplémentaire) ; 5 « predeploy » par base.
+- Sont aussi sauvegardés : rôles Postgres, configuration des projets (`.env`, `secrets/`), blocs Caddy, `pg_hba`, volume
+  des certificats Caddy. **Pas** `infra/secrets/postgres_password` (illisible pour `deploy`, recréé sur un nouveau serveur).
+- Restauration : `--test` restaure dans une base jetable créée comme une vraie base de projet, avec exactement
+  les mêmes options que `--apply` (`--single-transaction --exit-on-error --no-owner --no-acl --role=<projet>_app`) :
+  un test réussi garantit que la vraie restauration ne trouvera pas d'erreur d'ordre ou de droits. Exécuté
+  chaque semaine par un timer, avec alerte en cas d'échec.
+- Déploiement : images étiquetées par le sha git (`manual-<horodatage>` hors git), 4 conservées ; migrations avant la
+  bascule avec la nouvelle image ; retour automatique si le healthcheck échoue. Les retours arrière ne défont pas les
+  migrations (règle : migrations rétro-compatibles, documentée).
+- Alertes : e-mail via `msmtp` et un relais SMTP choisi par l'utilisateur (mot de passe saisi sur le VPS, jamais
+  dans git ni dans le chat). Simple et sans service tiers. Limite assumée : un VPS éteint ne peut pas écrire,
+  d'où la recommandation d'un moniteur externe gratuit (UptimeRobot / Healthchecks.io, sans secret).
+- Anti-bruit : 2 échecs consécutifs avant alerte, un e-mail par incident, rappel à 12 h, e-mail de rétablissement.
+- Planification par timers systemd (pas cron) : `Persistent=true` rattrape une sauvegarde manquée si le VPS était
+  éteint, journalisation dans journald, fuseau explicite `Europe/Paris`.

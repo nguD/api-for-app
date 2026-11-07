@@ -1,0 +1,14 @@
+[Unit]
+Description=Sauvegarde quotidienne (Postgres, configuration, certificats)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=@@USER@@
+ExecStart=@@REPO@@/scripts/backup.sh
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=2h
+NoNewPrivileges=true
+PrivateTmp=true

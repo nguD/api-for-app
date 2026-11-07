@@ -1,0 +1,12 @@
+[Unit]
+Description=Supervision minimale (conteneurs, HTTPS, disque, sauvegardes) avec alerte e-mail
+After=docker.service
+
+[Service]
+Type=oneshot
+User=@@USER@@
+ExecStart=@@REPO@@/scripts/healthwatch.sh
+Nice=5
+TimeoutStartSec=2min
+NoNewPrivileges=true
+PrivateTmp=true

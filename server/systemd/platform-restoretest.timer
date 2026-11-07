@@ -1,0 +1,9 @@
+[Unit]
+Description=Test de restauration chaque dimanche à 05h00 (heure de Paris)
+
+[Timer]
+OnCalendar=Sun *-*-* 05:00:00 Europe/Paris
+Persistent=true
+
+[Install]
+WantedBy=timers.target
