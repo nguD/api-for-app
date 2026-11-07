@@ -49,8 +49,8 @@ section "Pare-feu ufw"
 UFW="$(ufw status verbose 2>/dev/null)"
 grep -q '^Status: active' <<<"$UFW" && ok "ufw actif" || ko "ufw inactif"
 grep -q 'Default: deny (incoming)' <<<"$UFW" && ok "entrant : deny par défaut" || ko "politique entrante != deny"
-ALLOWED="$(ufw status 2>/dev/null | awk '/ALLOW|LIMIT/ {print $1}' | sed 's#(v6)##' | sort -u | tr '\n' ' ')"
-if [[ "$ALLOWED" == "22/tcp 80/tcp 443/tcp " ]]; then
+ALLOWED="$(ufw status 2>/dev/null | awk '/ALLOW|LIMIT/ {print $1}' | sed 's#(v6)##' | sort -V -u | tr '\n' ' ' | sed 's/ $//')"
+if [[ "$ALLOWED" == "22/tcp 80/tcp 443/tcp" ]]; then
   ok "règles autorisées : $ALLOWED"
 else
   ko "règles autorisées inattendues : $ALLOWED (attendu : 22/tcp 80/tcp 443/tcp)"
@@ -62,7 +62,8 @@ check "jail sshd actif" fail2ban-client status sshd
 
 section "Mises à jour automatiques"
 check "unattended-upgrades activé" systemctl is-enabled --quiet unattended-upgrades
-if apt-config dump 2>/dev/null | grep -q 'Unattended-Upgrade::Automatic-Reboot "false"'; then
+APT_CFG="$(apt-config dump 2>/dev/null)"   # variable : évite SIGPIPE + pipefail avec grep -q
+if grep -q 'Unattended-Upgrade::Automatic-Reboot "false"' <<<"$APT_CFG"; then
   ok "redémarrage automatique désactivé"
 else
   ko "Automatic-Reboot devrait être false"
@@ -74,7 +75,8 @@ else
 fi
 
 section "Mémoire et système"
-swapon --show --noheadings | grep -q . && ok "swap actif" || ko "pas de swap"
+SWAP_LIST="$(swapon --show --noheadings)"
+[[ -n "$SWAP_LIST" ]] && ok "swap actif" || ko "pas de swap"
 [[ "$(timedatectl show -p Timezone --value 2>/dev/null)" == "Europe/Paris" ]] \
   && ok "fuseau Europe/Paris" || wa "fuseau différent de Europe/Paris"
 check "sysctl durci chargé (tcp_syncookies=1)" bash -c '[[ "$(sysctl -n net.ipv4.tcp_syncookies)" == 1 ]]'
@@ -82,7 +84,8 @@ check "sysctl durci chargé (tcp_syncookies=1)" bash -c '[[ "$(sysctl -n net.ipv
 section "Docker"
 check "docker actif" systemctl is-active --quiet docker
 check "rotation des logs configurée" grep -q 'max-size' /etc/docker/daemon.json
-id -nG "$DEPLOY_USER" 2>/dev/null | tr ' ' '\n' | grep -qx docker \
+USER_GROUPS=" $(id -nG "$DEPLOY_USER" 2>/dev/null) "
+[[ "$USER_GROUPS" == *" docker "* ]] \
   && ok "$DEPLOY_USER dans le groupe docker" || ko "$DEPLOY_USER pas dans le groupe docker"
 
 section "Ports en écoute hors loopback"

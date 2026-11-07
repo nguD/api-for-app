@@ -142,7 +142,7 @@ EOF
   systemctl restart unattended-upgrades
 
   log "Swap de $SWAP_SIZE"
-  if swapon --show --noheadings | grep -q .; then
+  if [[ -n "$(swapon --show --noheadings)" ]]; then
     info "swap déjà actif"
   else
     if [[ -e /swapfile ]]; then
@@ -229,7 +229,9 @@ cmd_lockdown() {
   [[ "$pw_state" == "P" ]] \
     || die "'$DEPLOY_USER' n'a pas de mot de passe sudo. Lance : passwd $DEPLOY_USER"
 
-  id -nG "$DEPLOY_USER" | tr ' ' '\n' | grep -qx sudo \
+  local groups_of_user
+  groups_of_user=" $(id -nG "$DEPLOY_USER") "
+  [[ "$groups_of_user" == *" sudo "* ]] \
     || die "'$DEPLOY_USER' n'est pas dans le groupe sudo."
 
   cat <<EOF
