@@ -188,7 +188,9 @@ restore_into "$NAME" "$ROLE" "$FILE" || die "pg_restore a échoué."
 trap - EXIT
 
 log "Redémarrage de $NAME-api"
-pcompose "$NAME" "$(current_tag "$NAME")" start api
+# 'up --no-build' (et non 'start') : fonctionne aussi si le conteneur n'a jamais été créé (nouveau serveur).
+# L'image doit exister : tag en cours, ou 'local' (docker compose build) sur un serveur neuf.
+pcompose "$NAME" "$(current_tag "$NAME")" up -d --no-build api
 if wait_healthy "$NAME-api" 90; then
   info "$NAME-api est en bonne santé : restauration terminée."
 else
