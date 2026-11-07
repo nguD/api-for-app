@@ -25,7 +25,7 @@ Commence par lire le code existant de l'app (architecture, gestion d'état, navi
 - Vêtements : liste paginée (limit/offset) avec filtres `category`, `status`, `style` (listes séparées par des virgules) et
   `neverWornSince` ; création ; lecture ; modification partielle (`PATCH`, uniquement les champs changés) ; suppression.
   Modèle `Item` complet : `number`, `style`, `warmth` (1..4), `waterproof`, `status`, `estimatedPrice` (null possible), `imageUrl`,
-  `thumbUrl`, `wearCount`, `lastWornAt`. Les 16 catégories du contrat dans un enum Dart ; une valeur inconnue reçue du serveur ne doit
+  `thumbUrl`, `wearCount`, `lastWornAt`. Les 18 catégories du contrat dans un enum Dart ; une valeur inconnue reçue du serveur ne doit
   pas faire planter l'app (valeur de repli).
 - Photos : avant l'envoi, redimensionner côté app en JPEG (image ≤ 1200 px, miniature ≤ 400 px, chacune < 5 Mo), puis
   `POST /v1/items/{id}/image` en multipart (champs `image` et `thumb` uniquement ; ne PAS fixer le Content-Type à la main).

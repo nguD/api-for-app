@@ -53,7 +53,7 @@ Renvoyé par `GET/POST/PATCH /v1/items…`, `POST …/image`.
 | `id` | UUID | |
 | `number` | entier ≥ 1 | **attribué par le serveur**, propre à chaque utilisateur (1, 2, 3…), **jamais réutilisé** (même après suppression), **immuable** |
 | `name` | string | 1 à 100 car. (espaces autour retirés) |
-| `category` | enum | `top` `bottom` `outerwear` `dress` `shoes` `accessory` `other` (v1) + `tee` `shirt` `sweater` `turtleneck` `jacket` `jeans` `chino` `jogger` `cargo` |
+| `category` | enum | `top` `bottom` `outerwear` `dress` `shoes` `accessory` `other` (v1) + `tee` `shirt` `sweater` `turtleneck` `jacket` `jeans` `chino` `jogger` `cargo` `hoodie` `sweatshirt` |
 | `color` | string \| null | texte libre de 1 à 30 car. (`"bleu"`, `"#1A2B3C"`…) ; le serveur ne valide pas le format |
 | `style` | enum | `casual` (défaut) `chic` `fashion` |
 | `warmth` | entier 1..4 | défaut `2` |
@@ -311,8 +311,8 @@ Les compteurs sont en mémoire : ils repartent de zéro quand le serveur redéma
 
 ## 10. Choix de conception (à connaître)
 
-1. **Catégories** : les 7 valeurs v1 sont conservées et 9 s'ajoutent (`tee`, `shirt`, `sweater`, `turtleneck`, `jacket`,
-   `jeans`, `chino`, `jogger`, `cargo`). Les anciennes pièces ne sont pas reclassées ; il n'y a pas de défaut (champ obligatoire à la création, comme en v1).
+1. **Catégories** : les 7 valeurs v1 sont conservées et 11 s'ajoutent (`tee`, `shirt`, `sweater`, `turtleneck`, `jacket`,
+   `jeans`, `chino`, `jogger`, `cargo`, `hoodie`, `sweatshirt`). Les anciennes pièces ne sont pas reclassées ; il n'y a pas de défaut (champ obligatoire à la création, comme en v1).
 2. **`number`** : compteur par utilisateur, verrouillé dans la transaction d'insertion (pas de `MAX()+1`), donc sûr en concurrence.
 3. **`color`** : reste une chaîne libre 1 à 30 caractères ; `#RRGGBB` y tient, mais le serveur ne vérifie pas que c'est une couleur.
 4. **PATCH** : `color` et `estimatedPrice` peuvent être remis à `null` ; `name`, `category`, `style`, `warmth`, `waterproof`, `status` non.
@@ -335,4 +335,5 @@ d'une tenue, suppression d'une entrée de port (annuler un « porté aujourd'hui
 | Version | Statut |
 |---|---|
 | v1 | en production |
-| v2 | **en production (7 novembre 2026)** |
+| v2 | en production (7 novembre 2026) |
+| v2.1 | ajout des catégories `hoodie` et `sweatshirt` (aucun autre changement) : **développée, pas encore déployée** |
