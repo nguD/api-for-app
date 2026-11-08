@@ -4,7 +4,7 @@
 les routes de la v2. La **v2.1** (8 novembre 2026) étend trois champs existants, sans aucune nouvelle route (voir
 l'historique en bas) : catégories `hoodie` et `sweatshirt`, 7 nouveaux styles, champ `location`.
 **Statut de la v2** : EN PRODUCTION depuis le 7 novembre 2026 (80 vérifications de bout en bout).
-**Statut de la v2.1** : développée et testée ; elle n'est valable en production qu'une fois l'historique en bas passé à « en production ».
+**Statut de la v2.1** : **en production depuis le 8 novembre 2026** (smoke test : 93 PASS, 0 FAIL).
 
 La v2 est **rétrocompatible** : les routes de la v1 (`GET /v1/me`, `GET|POST /v1/items`, `GET|DELETE /v1/items/{id}`)
 se comportent comme avant, les objets « vêtement » reçoivent seulement des champs supplémentaires (une app v1 qui
@@ -345,7 +345,7 @@ d'une tenue, suppression d'une entrée de port (annuler un « porté aujourd'hui
 |---|---|
 | v1 | en production |
 | v2 | en production (7 novembre 2026) |
-| v2.1 | 8 novembre 2026 : **développée et testée, pas encore déployée** (voir le changelog ci-dessous) |
+| v2.1 | 8 novembre 2026 : **en production** (migration 0006 additive ; smoke test 93 PASS) (voir le changelog ci-dessous) |
 
 ### Changelog v2.1 (rétrocompatible, aucune nouvelle route, aucun nouveau code d'erreur)
 
