@@ -25,7 +25,7 @@ Commence par lire le code existant de l'app (architecture, gestion d'état, navi
 - Vêtements : liste paginée (limit/offset) avec filtres `category`, `status`, `style` (listes séparées par des virgules) et
   `neverWornSince` ; création ; lecture ; modification partielle (`PATCH`, uniquement les champs changés) ; suppression.
   Modèle `Item` complet : `number`, `style`, `warmth` (1..4), `waterproof`, `status`, `estimatedPrice` (null possible), `imageUrl`,
-  `thumbUrl`, `wearCount`, `lastWornAt`. Les 18 catégories du contrat dans un enum Dart ; une valeur inconnue reçue du serveur ne doit
+  `thumbUrl`, `wearCount`, `lastWornAt`. Les 18 catégories et les 10 styles du contrat dans des enums Dart, plus le champ `location` (String?, 1 à 50 caractères, `null` pour effacer ; jamais de chaîne vide) ; une valeur inconnue reçue du serveur ne doit
   pas faire planter l'app (valeur de repli).
 - Photos : avant l'envoi, redimensionner côté app en JPEG (image ≤ 1200 px, miniature ≤ 400 px, chacune < 5 Mo), puis
   `POST /v1/items/{id}/image` en multipart (champs `image` et `thumb` uniquement ; ne PAS fixer le Content-Type à la main).
@@ -37,7 +37,7 @@ Commence par lire le code existant de l'app (architecture, gestion d'état, navi
 - Tenues : `POST /v1/outfits` (haut + bas obligatoires, couche optionnelle, `weatherSnapshot` strict, `wornAt` optionnel) et
   `GET /v1/outfits` paginé. Attention : supprimer un vêtement supprime les tenues dont il est le haut/bas (la couche passe à null) :
   prévenir l'utilisateur avant la suppression et rafraîchir la liste des tenues après.
-- Profil : `GET`/`PATCH /v1/me/profile` (displayName, city, preferredStyle, tempUnit ; `null` pour effacer le nom ou la ville).
+- Profil : `GET`/`PATCH /v1/me/profile` (displayName, city, preferredStyle [10 valeurs, comme `style`], tempUnit ; `null` pour effacer le nom ou la ville).
 - Compte (exigence App Store / Google Play) : un écran « Supprimer mon compte » avec confirmation explicite, qui appelle
   `DELETE /v1/me` en suivant l'exemple du contrat : sur `recent_login_required`, demander une reconnexion
   (`reauthenticateWithCredential` selon le fournisseur : Apple, Google, e-mail/mot de passe), puis rejouer. Sur 204 :

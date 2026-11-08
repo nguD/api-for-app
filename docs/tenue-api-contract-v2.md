@@ -1,8 +1,10 @@
-# CONTRAT API v2 : API Tenue pour l'application Flutter
+# CONTRAT API v2.1 : API Tenue pour l'application Flutter
 
 À donner tel quel à la conversation qui construit l'app. Ce document **remplace** `tenue-api-contract.md` (v1) et décrit
-les routes de la v2. **Statut : EN PRODUCTION depuis le 7 novembre 2026** (validée par 80 vérifications de bout en bout,
-dont les photos Bunny et la suppression de compte).
+les routes de la v2. La **v2.1** (8 novembre 2026) étend trois champs existants, sans aucune nouvelle route (voir
+l'historique en bas) : catégories `hoodie` et `sweatshirt`, 7 nouveaux styles, champ `location`.
+**Statut de la v2** : EN PRODUCTION depuis le 7 novembre 2026 (80 vérifications de bout en bout).
+**Statut de la v2.1** : développée et testée ; elle n'est valable en production qu'une fois l'historique en bas passé à « en production ».
 
 La v2 est **rétrocompatible** : les routes de la v1 (`GET /v1/me`, `GET|POST /v1/items`, `GET|DELETE /v1/items/{id}`)
 se comportent comme avant, les objets « vêtement » reçoivent seulement des champs supplémentaires (une app v1 qui
@@ -35,6 +37,7 @@ Renvoyé par `GET/POST/PATCH /v1/items…`, `POST …/image`.
   "name": "Chemise bleue",
   "category": "shirt",
   "color": "#1A2B3C",
+  "location": "Tiroir 2",
   "style": "casual",
   "warmth": 2,
   "waterproof": false,
@@ -55,7 +58,8 @@ Renvoyé par `GET/POST/PATCH /v1/items…`, `POST …/image`.
 | `name` | string | 1 à 100 car. (espaces autour retirés) |
 | `category` | enum | `top` `bottom` `outerwear` `dress` `shoes` `accessory` `other` (v1) + `tee` `shirt` `sweater` `turtleneck` `jacket` `jeans` `chino` `jogger` `cargo` `hoodie` `sweatshirt` |
 | `color` | string \| null | texte libre de 1 à 30 car. (`"bleu"`, `"#1A2B3C"`…) ; le serveur ne valide pas le format |
-| `style` | enum | `casual` (défaut) `chic` `fashion` |
+| `style` | enum | `casual` (défaut) `chic` `fashion` `sport` `streetwear` `business` `soiree` `boheme` `vintage` `minimaliste` *(v2.1 : les 7 dernières)* |
+| `location` | string \| null | *(v2.1)* emplacement de rangement (ex. `"Tiroir 2"`), 1 à 50 caractères après suppression des espaces autour ; `null` si non renseigné. **Toujours présent** dans l'objet. Visible de son seul propriétaire |
 | `warmth` | entier 1..4 | défaut `2` |
 | `waterproof` | bool | défaut `false` |
 | `status` | enum | `active` (défaut) `listed` `sold` |
@@ -80,7 +84,7 @@ Du plus récent au plus ancien (tri **inchangé**). Réponse : `200 {"items":[�
 | `offset` | entier | 0 | 0 à 10 000 |
 | `category` | liste | — | une ou plusieurs valeurs de l'enum séparées par des virgules : `?category=tee,jeans` |
 | `status` | liste | — | idem : `?status=listed,sold` |
-| `style` | liste | — | idem : `?style=chic,fashion` |
+| `style` | liste | — | idem : `?style=chic,sport,vintage` (les 10 valeurs de l'enum `style`) |
 | `neverWornSince` | date | — | date (`2026-06-01`, minuit UTC) ou date-heure ISO. Garde les pièces dont **le dernier port, ou à défaut la date de création,** est **antérieur** à cette date |
 
 Les filtres se combinent par **ET** ; plusieurs valeurs d'un même filtre par **OU**. Tout autre paramètre, ou une valeur
@@ -93,6 +97,7 @@ Corps (strict : tout autre champ → `400`) :
 |---|---|---|
 | `name`, `category` | oui | |
 | `color` | non | `null` |
+| `location` | non | `null` (accepte `null`) |
 | `style` | non | `casual` |
 | `warmth` | non | `2` |
 | `waterproof` | non | `false` |
@@ -107,7 +112,7 @@ Corps (strict : tout autre champ → `400`) :
 ### `PATCH /v1/items/{id}`  (nouveau)
 Corps **partiel** : mêmes champs et mêmes règles que `POST`, **au moins un** champ. `id`, `number`, `createdAt`, les
 URLs et les compteurs ne sont pas modifiables (champ inconnu → `400`).
-`color` et `estimatedPrice` acceptent `null` pour être effacés. Les champs absents ne changent pas.
+`color`, `location` et `estimatedPrice` acceptent `null` pour être effacés (`location` : une chaîne vide ou d'espaces est refusée, envoie `null`). Les champs absents ne changent pas.
 `200` : l'objet complet à jour. `400` corps vide ou invalide. `404` inexistant ou à un autre utilisateur.
 `status` se change ici (ex. `{"status":"sold"}`).
 
@@ -210,7 +215,7 @@ Corps partiel, au moins un champ, champs inconnus refusés :
 |---|---|
 | `displayName` | string 1 à 50 car. (espaces autour retirés) ou `null` pour effacer |
 | `city` | string 1 à 100 car. ou `null` |
-| `preferredStyle` | `casual` (défaut) `chic` `fashion` |
+| `preferredStyle` | `casual` (défaut) `chic` `fashion` `sport` `streetwear` `business` `soiree` `boheme` `vintage` `minimaliste` (mêmes valeurs que `style` d'un vêtement) |
 | `tempUnit` | `"C"` (défaut) ou `"F"` |
 
 `200` : le profil complet à jour.
@@ -222,7 +227,7 @@ Corps partiel, au moins un champ, champs inconnus refusés :
   "exportedAt": "2026-11-07T13:31:20.123Z",
   "uid": "<uid>",
   "profile": { "displayName": null, "city": null, "preferredStyle": "casual", "tempUnit": "C" },
-  "items": [ { "id": "…", "number": 1, "name": "…", "category": "…", "color": null, "style": "casual", "warmth": 2,
+  "items": [ { "id": "…", "number": 1, "name": "…", "category": "…", "color": null, "location": null, "style": "casual", "warmth": 2,
                "waterproof": false, "status": "active", "estimatedPrice": null, "wearCount": 0, "lastWornAt": null,
                "createdAt": "…" } ],
   "wearLogs": [ { "id": "…", "itemId": "…", "wornAt": "…" } ],
@@ -315,7 +320,7 @@ Les compteurs sont en mémoire : ils repartent de zéro quand le serveur redéma
    `jeans`, `chino`, `jogger`, `cargo`, `hoodie`, `sweatshirt`). Les anciennes pièces ne sont pas reclassées ; il n'y a pas de défaut (champ obligatoire à la création, comme en v1).
 2. **`number`** : compteur par utilisateur, verrouillé dans la transaction d'insertion (pas de `MAX()+1`), donc sûr en concurrence.
 3. **`color`** : reste une chaîne libre 1 à 30 caractères ; `#RRGGBB` y tient, mais le serveur ne vérifie pas que c'est une couleur.
-4. **PATCH** : `color` et `estimatedPrice` peuvent être remis à `null` ; `name`, `category`, `style`, `warmth`, `waterproof`, `status` non.
+4. **PATCH** : `color`, `location` et `estimatedPrice` peuvent être remis à `null` ; `name`, `category`, `style`, `warmth`, `waterproof`, `status` non.
 5. **Date de port** : « pas dans le futur » avec 5 minutes de tolérance (horloge du téléphone) ; antérieure à 2000 refusée.
 6. **Tenues** : suppression du haut/bas → tenue supprimée ; suppression de la couche → `layerId: null`.
 7. **Photos** : le serveur ne vérifie pas les dimensions en pixels ni que le fichier est décodable (seulement l'en-tête JPEG/WebP et 5 Mo) ;
@@ -324,6 +329,10 @@ Les compteurs sont en mémoire : ils repartent de zéro quand le serveur redéma
    serveur redémarre dans l'heure, le token (valable 1 h) pourrait être accepté de nouveau, mais le compte Firebase n'existe plus, donc
    aucun nouveau token ne peut être obtenu. Pour fermer complètement cette fenêtre : `FIREBASE_CHECK_REVOKED=true` (un appel réseau par requête).
 9. **Export** : ne contient pas les photos elles-mêmes (uniquement les métadonnées) ; pas d'URL.
+10. **`location`** (v2.1) : pas de filtre serveur ; le tri et la recherche par emplacement se font côté app. Le serveur ne la renvoie qu'à son
+    propriétaire (comme tout le reste) ; elle est supprimée avec la pièce et avec le compte, et incluse dans l'export.
+11. **Valeurs inconnues** : une catégorie, un style ou un filtre hors liste donne toujours `400 validation_error`. Côté app, prévoir une valeur de repli
+    à l'affichage si le serveur ajoute un jour une valeur que cette version de l'app ne connaît pas.
 
 ## 11. Ce que la v2 ne fait pas (à demander si besoin)
 
@@ -336,4 +345,28 @@ d'une tenue, suppression d'une entrée de port (annuler un « porté aujourd'hui
 |---|---|
 | v1 | en production |
 | v2 | en production (7 novembre 2026) |
-| v2.1 | ajout des catégories `hoodie` et `sweatshirt` (aucun autre changement) : **développée, pas encore déployée** |
+| v2.1 | 8 novembre 2026 : **développée et testée, pas encore déployée** (voir le changelog ci-dessous) |
+
+### Changelog v2.1 (rétrocompatible, aucune nouvelle route, aucun nouveau code d'erreur)
+
+- **`category`** : + `hoodie`, `sweatshirt` (18 valeurs au total). Acceptées en `POST`/`PATCH /v1/items`, dans le filtre `?category=`, renvoyées partout et dans l'export.
+- **`style`** : 3 valeurs → 10 : `casual` (défaut inchangé), `chic`, `fashion`, + `sport`, `streetwear`, `business`, `soiree`, `boheme`, `vintage`, `minimaliste`.
+  Acceptées en `POST`/`PATCH /v1/items`, dans le filtre `?style=` et dans `preferredStyle` de `PATCH /v1/me/profile` ; renvoyées partout et dans l'export.
+- **`location`** (nouveau champ des vêtements) : string 1 à 50 caractères après trim, ou `null`. Absent à la création = `null` ; `PATCH` : `null` efface, champ absent = inchangé ;
+  chaîne vide ou d'espaces = `400 validation_error` (`details[].path = "location"`). Présent (valeur ou `null`) dans tous les objets vêtement (liste, détail, `POST`, `PATCH`,
+  réponse de `/image`) et dans l'export. Les vêtements existants ont `location: null`.
+- **Compatibilité** : un client qui n'envoie aucun nouveau champ continue de fonctionner à l'identique ; les anciennes valeurs restent valides. Un client qui n'ignore pas
+  les champs inconnus doit tolérer le champ `location` dans les objets vêtement.
+
+#### Exemple v2.1 (curl)
+
+```bash
+curl -s -X POST https://api.tenue.ahua.fr/v1/items \
+  -H "Authorization: Bearer $ID_TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"Hoodie gris","category":"hoodie","style":"sport","location":"Tiroir 2"}'
+```
+`201` (les valeurs de `id`, `number` et `createdAt` varient) :
+```json
+{"id":"d1b21043-06af-40e2-9c08-a587192e569c","number":1,"name":"Hoodie gris","category":"hoodie","color":null,"location":"Tiroir 2","style":"sport","warmth":2,"waterproof":false,"status":"active","estimatedPrice":null,"imageUrl":null,"thumbUrl":null,"wearCount":0,"lastWornAt":null,"createdAt":"2026-11-08T13:14:00.194Z"}
+```
+Emplacement vide (`"location":"  "`) : `400 {"error":"validation_error","details":[{"path":"location","message":"…"}]}`.
